@@ -40,11 +40,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.tictactoe2.ui.theme.TicTacToe2Theme
 
 class MainActivity : ComponentActivity() {
@@ -62,18 +67,12 @@ class MainActivity : ComponentActivity() {
 fun MyApp(modifier:Modifier=Modifier){
     var shouldShowStartPage by rememberSaveable{ mutableStateOf(true)}
     var shouldShowSettingPage by rememberSaveable{ mutableStateOf(true)}
-    Surface(modifier,
-        color = Color.DarkGray){
-        if(shouldShowStartPage) {
-            HomePage(
-                onStartClicked = {shouldShowStartPage=false})
-        }
-        else{
-            GameOptionsPage(modifier)
-        }
-        if(shouldShowSettingPage){
-
-        }
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = "Home"){
+        composable("Home") { HomePage(navController) }
+        composable("options"){ GameOptionsPage(navController) }
+        composable("threeXGrid"){ ThreeXGrid(navController) }
+        composable("eightXGrid"){ EightXGrid(navController) }
     }
 }
 
@@ -86,26 +85,53 @@ fun MyAppPreview(modifier:Modifier=Modifier){
 
 
 @Composable
-fun GameOptionsPage(modifier:Modifier=Modifier){
+fun GameOptionsPage(navController: NavController, modifier: Modifier=Modifier){
     var selectedGrid by rememberSaveable { mutableStateOf<GridOption?>(null) }
+    LaunchedEffect(Unit){
+        selectedGrid = null
+    }
     Surface (modifier,color = Color.DarkGray) {
-       when (selectedGrid){
-           null -> {
-               GameOptions(onGridSelected = {grid ->selectedGrid = grid})
-           }
-           GridOption.THREE_X_THREE -> ThreeXGrid(modifier)
-           GridOption.EIGHT_X_EIGHT -> EightXGrid(modifier)
-       }
+        Column(modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(modifier = Modifier.fillMaxWidth()
+                .padding(top=16.dp),
+                horizontalArrangement = Arrangement.Start) {
+                Button(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(text = "Back")
+                }
+            }
+            when (selectedGrid) {
+                null -> {
+                    GameOptions(onGridSelected = { grid ->
+                        selectedGrid = grid
+                        when (grid) {
+                            GridOption.THREE_X_THREE -> navController.navigate("threeXGrid")
+                            GridOption.EIGHT_X_EIGHT -> navController.navigate("eightXGrid")
+                        }
+                    })
+                }
+
+                else -> {}
+            }
+
+        }
     }
 }
 
 @Composable
-fun EightXGrid(modifier: Modifier) {
+fun EightXGrid(navController: NavController, modifier: Modifier=Modifier) {
     var board by remember { mutableStateOf(List(8){ MutableList(8){""} })}
     var currentPlayer by remember {mutableStateOf("X")}
     var winner by remember { mutableStateOf<String?>(null) }
     Column(
-        modifier = Modifier.fillMaxSize().background(Color.DarkGray).padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.DarkGray)
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ){
@@ -120,15 +146,18 @@ fun EightXGrid(modifier: Modifier) {
             Row{
                 row.forEachIndexed {colIndex, cell ->
                     Box(
-                        modifier = Modifier.size(45.dp)
+                        modifier = Modifier
+                            .size(45.dp)
                             .background(Color.LightGray)
                             .padding(8.dp)
-                            .clickable(enabled = cell.isEmpty() && winner==null){
-                                board = board.toMutableList().apply{
-                                    this[rowIndex][colIndex] = currentPlayer
-                                }
-                                winner = checkWinner(board,4)
-                                currentPlayer = if(currentPlayer == "X") "O" else "X"
+                            .clickable(enabled = cell.isEmpty() && winner == null) {
+                                board = board
+                                    .toMutableList()
+                                    .apply {
+                                        this[rowIndex][colIndex] = currentPlayer
+                                    }
+                                winner = checkWinner(board, 4)
+                                currentPlayer = if (currentPlayer == "X") "O" else "X"
                             },
                         contentAlignment = Alignment.Center
                     ){
@@ -150,6 +179,13 @@ fun EightXGrid(modifier: Modifier) {
             }
         ){
             Text(text = "Reset Game")
+        }
+        Button(
+            onClick={ navController.popBackStack() }
+        ){
+            Text(
+                text = "Back"
+            )
         }
     }
 }
@@ -203,11 +239,13 @@ fun GameOptions(onGridSelected: (GridOption) -> Unit,modifier:Modifier=Modifier)
 }
 
 @Composable
-fun ThreeXGrid(modifier:Modifier = Modifier){
+fun ThreeXGrid(navController:NavController,modifier:Modifier = Modifier){
    var board by remember {mutableStateOf(List(3) {MutableList(3){""} })}
     var currentPlayer by remember {mutableStateOf("X")}
     var winner by remember { mutableStateOf<String?>(null)}
-    Column(modifier = Modifier.fillMaxSize().background(Color.DarkGray)
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(Color.DarkGray)
         .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -222,15 +260,18 @@ fun ThreeXGrid(modifier:Modifier = Modifier){
             Row{
                 row.forEachIndexed {colIndex, cell ->
                     Box(
-                        modifier = Modifier.size(100.dp)
+                        modifier = Modifier
+                            .size(100.dp)
                             .background(Color.LightGray)
                             .padding(8.dp)
-                            .clickable(enabled = cell.isEmpty() && winner == null){
-                                board = board.toMutableList().apply{
-                                    this[rowIndex][colIndex] = currentPlayer
-                                }
-                                winner = checkWinner(board,3)
-                                currentPlayer = if(currentPlayer=="X") "O" else "X"
+                            .clickable(enabled = cell.isEmpty() && winner == null) {
+                                board = board
+                                    .toMutableList()
+                                    .apply {
+                                        this[rowIndex][colIndex] = currentPlayer
+                                    }
+                                winner = checkWinner(board, 3)
+                                currentPlayer = if (currentPlayer == "X") "O" else "X"
                             },
                         contentAlignment = Alignment.Center
                     ){
@@ -252,6 +293,9 @@ fun ThreeXGrid(modifier:Modifier = Modifier){
             }
         ){
             Text(text = "Reset Game")
+        }
+        Button(onClick = {navController.popBackStack()}) {
+            Text(text = "Back")
         }
     }
 }
@@ -293,7 +337,7 @@ fun checkWinner(board: List<List<String>>, winLength : Int): String? {
 
 
 @Composable
-fun HomePage(onStartClicked:() -> Unit,modifier:Modifier=Modifier,
+fun HomePage(navController: NavController,modifier:Modifier=Modifier,
              ){
     val buttonSize = Modifier.size(200.dp, 60.dp)
     Column(modifier = modifier.fillMaxSize(),
@@ -301,7 +345,7 @@ fun HomePage(onStartClicked:() -> Unit,modifier:Modifier=Modifier,
         horizontalAlignment = Alignment.CenterHorizontally){
 
         ElevatedButton(modifier = buttonSize,
-            onClick = onStartClicked) {
+            onClick = {navController.navigate("options")}) {
             Text(
                 text = "Start",
                 fontWeight = FontWeight.ExtraBold,
@@ -309,7 +353,7 @@ fun HomePage(onStartClicked:() -> Unit,modifier:Modifier=Modifier,
             )
         }
         ElevatedButton(modifier = buttonSize.padding(top=6.dp),
-            onClick = onStartClicked) {
+            onClick = {}) {
             Text(
                 text = "Setting",
                 fontWeight = FontWeight.ExtraBold,
@@ -317,7 +361,7 @@ fun HomePage(onStartClicked:() -> Unit,modifier:Modifier=Modifier,
             )
         }
         ElevatedButton(modifier = buttonSize.padding(top=6.dp),
-            onClick = onStartClicked) {
+            onClick = {}) {
             Text(
                 text = "Exit",
                 fontWeight = FontWeight.ExtraBold,
@@ -330,8 +374,8 @@ fun HomePage(onStartClicked:() -> Unit,modifier:Modifier=Modifier,
 
 
 
-@Preview(showBackground = true)
-@Composable
-fun GameOptionsPreview(){
-    GameOptionsPage()
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun GameOptionsPreview(){
+//    GameOptionsPage()
+//}
