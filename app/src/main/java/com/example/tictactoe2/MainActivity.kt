@@ -42,6 +42,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tictactoe2.ui.theme.TicTacToe2Theme
@@ -100,7 +101,57 @@ fun GameOptionsPage(modifier:Modifier=Modifier){
 
 @Composable
 fun EightXGrid(modifier: Modifier) {
-
+    var board by remember { mutableStateOf(List(8){ MutableList(8){""} })}
+    var currentPlayer by remember {mutableStateOf("X")}
+    var winner by remember { mutableStateOf<String?>(null) }
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color.DarkGray).padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ){
+        Text(
+            text = winner?.let{"$it Wins!!"}?: "Player $currentPlayer's turn",
+            color = Color.White,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        board.forEachIndexed {rowIndex, row ->
+            Row{
+                row.forEachIndexed {colIndex, cell ->
+                    Box(
+                        modifier = Modifier.size(45.dp)
+                            .background(Color.LightGray)
+                            .padding(8.dp)
+                            .clickable(enabled = cell.isEmpty() && winner==null){
+                                board = board.toMutableList().apply{
+                                    this[rowIndex][colIndex] = currentPlayer
+                                }
+                                winner = checkWinner(board,4)
+                                currentPlayer = if(currentPlayer == "X") "O" else "X"
+                            },
+                        contentAlignment = Alignment.Center
+                    ){
+                        Text(
+                            text = cell,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                board = List(8) {MutableList(8){""} }
+                currentPlayer = "X"
+                winner = null
+            }
+        ){
+            Text(text = "Reset Game")
+        }
+    }
 }
 
 enum class GridOption{
@@ -178,7 +229,7 @@ fun ThreeXGrid(modifier:Modifier = Modifier){
                                 board = board.toMutableList().apply{
                                     this[rowIndex][colIndex] = currentPlayer
                                 }
-                                winner = checkWinner(board)
+                                winner = checkWinner(board,3)
                                 currentPlayer = if(currentPlayer=="X") "O" else "X"
                             },
                         contentAlignment = Alignment.Center
@@ -206,17 +257,36 @@ fun ThreeXGrid(modifier:Modifier = Modifier){
 }
 
 
-fun checkWinner(board: List<List<String>>): String? {
+fun checkWinner(board: List<List<String>>, winLength : Int): String? {
+    val size = board.size
     for(row in board){
-        if(row[0].isNotEmpty() && row[0]==row[1] && row[1]==row[2]){ return row[0]}
+        for(i in 0..size - winLength) {
+            val sequence = row.subList(i, i + winLength)
+            if (sequence.all { it == "X" }) return "X"
+            if (sequence.all { it == "O" }) return "O"
+        }
     }
-
-    for(col in 0 until 3){
-        if(board[0][col].isNotEmpty() && board[0][col] == board[1][col] && board[1][col] == board[2][col]){return board[0][col]}
+    for(col in 0 until size){
+        for( i in 0..size - winLength){
+            val sequence = board.subList(i, i+winLength).map{it[col]}
+            if (sequence.all { it == "X" }) return "X"
+            if (sequence.all { it == "O" }) return "O"
+        }
     }
-    if (board[0][0].isNotEmpty() && board[0][0] == board[1][1] && board[1][1] == board[2][2]){ return board[0][0]}
-    if (board[0][2].isNotEmpty() && board[0][2] == board[1][1] && board[1][1] == board[2][0]) {return board[0][2]}
-
+    for (row in 0..size - winLength){
+        for (col in 0..size - winLength){
+            val sequence = (0 until winLength).map{board[row + it][col + it]}
+            if (sequence.all { it == "X" }) return "X"
+            if (sequence.all { it == "O" }) return "O"
+        }
+    }
+    for (row in winLength-1 until size){
+        for (col in 0..size - winLength){
+            val sequence = (0 until winLength).map{board[row - it][col + it]}
+            if (sequence.all { it == "X" }) return "X"
+            if (sequence.all { it == "O" }) return "O"
+        }
+    }
     return null
 }
 
