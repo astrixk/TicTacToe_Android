@@ -5,6 +5,9 @@ import android.webkit.WebSettings.TextSize
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +45,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.dp
@@ -51,6 +55,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.tictactoe2.ui.theme.TicTacToe2Theme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeOut
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,8 +72,7 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun MyApp(modifier:Modifier=Modifier){
-    var shouldShowStartPage by rememberSaveable{ mutableStateOf(true)}
-    var shouldShowSettingPage by rememberSaveable{ mutableStateOf(true)}
+
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "Home"){
         composable("Home") { HomePage(navController) }
@@ -127,6 +133,7 @@ fun EightXGrid(navController: NavController, modifier: Modifier=Modifier) {
     var board by remember { mutableStateOf(List(8){ MutableList(8){""} })}
     var currentPlayer by remember {mutableStateOf("X")}
     var winner by remember { mutableStateOf<String?>(null) }
+    val selectedCell by remember { mutableStateOf<Pair<Int,Int>?>(null)}
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -145,9 +152,15 @@ fun EightXGrid(navController: NavController, modifier: Modifier=Modifier) {
         board.forEachIndexed {rowIndex, row ->
             Row{
                 row.forEachIndexed {colIndex, cell ->
+                    val isSelected = selectedCell == Pair(rowIndex,colIndex)
+                    val scale by animateFloatAsState(
+                        targetValue = if(isSelected) 1.2f else 1.0f,
+                        animationSpec = tween(durationMillis = 300)
+                    )
                     Box(
                         modifier = Modifier
                             .size(45.dp)
+                            .graphicsLayer(scaleX = scale, scaleY = scale)
                             .background(Color.LightGray)
                             .padding(8.dp)
                             .clickable(enabled = cell.isEmpty() && winner == null) {
@@ -161,11 +174,18 @@ fun EightXGrid(navController: NavController, modifier: Modifier=Modifier) {
                             },
                         contentAlignment = Alignment.Center
                     ){
-                        Text(
-                            text = cell,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        this@Row.AnimatedVisibility(
+                            visible = cell.isNotEmpty(),
+                            enter = fadeIn(animationSpec = tween(500)),
+                            exit = fadeOut(animationSpec = tween(300))
+                        ) {
+                            Text(
+                                text = cell,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if(cell == "X") Color.Red else Color.Blue
+                            )
+                        }
                     }
                 }
             }
@@ -243,6 +263,7 @@ fun ThreeXGrid(navController:NavController,modifier:Modifier = Modifier){
    var board by remember {mutableStateOf(List(3) {MutableList(3){""} })}
     var currentPlayer by remember {mutableStateOf("X")}
     var winner by remember { mutableStateOf<String?>(null)}
+    val selectedCell by remember { mutableStateOf<Pair<Int,Int>?>(null)}
     Column(modifier = Modifier
         .fillMaxSize()
         .background(Color.DarkGray)
@@ -259,9 +280,15 @@ fun ThreeXGrid(navController:NavController,modifier:Modifier = Modifier){
         board.forEachIndexed {rowIndex, row ->
             Row{
                 row.forEachIndexed {colIndex, cell ->
+                    val isSelected = selectedCell == Pair(rowIndex,colIndex)
+                    val scale by animateFloatAsState(
+                        targetValue = if(isSelected) 1.2f else 1.0f,
+                        animationSpec = tween(durationMillis = 300)
+                    )
                     Box(
                         modifier = Modifier
                             .size(100.dp)
+                            .graphicsLayer(scaleX = scale, scaleY = scale)
                             .background(Color.LightGray)
                             .padding(8.dp)
                             .clickable(enabled = cell.isEmpty() && winner == null) {
@@ -275,11 +302,18 @@ fun ThreeXGrid(navController:NavController,modifier:Modifier = Modifier){
                             },
                         contentAlignment = Alignment.Center
                     ){
-                        Text(
-                            text = cell,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        this@Row.AnimatedVisibility(
+                            visible = cell.isNotEmpty(),
+                            enter = fadeIn(animationSpec = tween(500)),
+                            exit = fadeOut(animationSpec = tween(300))
+                        ){
+                            Text(
+                                text = cell,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if(cell=="X") Color.Red else Color.Blue
+                            )
+                        }
                     }
                 }
             }
@@ -340,7 +374,8 @@ fun checkWinner(board: List<List<String>>, winLength : Int): String? {
 fun HomePage(navController: NavController,modifier:Modifier=Modifier,
              ){
     val buttonSize = Modifier.size(200.dp, 60.dp)
-    Column(modifier = modifier.fillMaxSize(),
+    Column(modifier = modifier.fillMaxSize()
+        .background(Color.DarkGray),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally){
 
