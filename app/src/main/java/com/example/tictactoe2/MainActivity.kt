@@ -1,5 +1,6 @@
 package com.example.tictactoe2
 
+import android.app.Activity
 import android.os.Bundle
 import android.webkit.WebSettings.TextSize
 import androidx.activity.ComponentActivity
@@ -58,37 +59,113 @@ import com.example.tictactoe2.ui.theme.TicTacToe2Theme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeOut
+import android.media.MediaPlayer
+import androidx.core.app.ActivityCompat.finishAffinity
+import kotlin.system.exitProcess
 
 class MainActivity : ComponentActivity() {
+    private lateinit var mediaPlayer: MediaPlayer
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        mediaPlayer = MediaPlayer.create(this, R.raw.background_music)
         enableEdgeToEdge()
         setContent {
             TicTacToe2Theme {
-                MyApp(modifier = Modifier.fillMaxSize())
+                var isMusicPlaying by rememberSaveable { mutableStateOf(false) }
+                LaunchedEffect(isMusicPlaying) {
+                    if(isMusicPlaying) mediaPlayer.start() else mediaPlayer.pause()
+                }
+                MyApp(modifier = Modifier.fillMaxSize(),
+                    isMusicPlaying = isMusicPlaying,
+                    onMusicToggle = { isMusicPlaying = it},
+                    onExitApp = { exitApp(this@MainActivity,mediaPlayer,isMusicPlaying)})
             }
         }
     }
 }
+
+
+private fun exitApp(activity: Activity, mediaPlayer: MediaPlayer?, isMusicPlaying: Boolean){
+    if(isMusicPlaying && mediaPlayer?.isPlaying == true){
+        mediaPlayer.stop()
+        mediaPlayer.release()
+    }
+    activity.finishAffinity()
+    exitProcess(0)
+}
+
 @Composable
-fun MyApp(modifier:Modifier=Modifier){
+fun MyApp(modifier:Modifier=Modifier,
+          isMusicPlaying:Boolean,
+          onMusicToggle: (Boolean) -> Unit,
+          onExitApp:() -> Unit){
 
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "Home"){
-        composable("Home") { HomePage(navController) }
+        composable("Home") { HomePage(navController, onExitApp = onExitApp) }
         composable("options"){ GameOptionsPage(navController) }
         composable("threeXGrid"){ ThreeXGrid(navController) }
         composable("eightXGrid"){ EightXGrid(navController) }
+        composable("settings"){SettingsPage(navController,isMusicPlaying, onMusicToggle)}
     }
 }
 
-@Preview
+//@Preview
+//@Composable
+//fun MyAppPreview(modifier:Modifier=Modifier){
+//    MyApp(
+//        modifier = modifier.fillMaxSize(),
+//        onExitApp = {
+//            println("Exit Buuton clicked")
+//        }
+//    )
+//}
+
 @Composable
-fun MyAppPreview(modifier:Modifier=Modifier){
-    MyApp()
+fun SettingsPage(navController: NavController,isMusicPlaying: Boolean,onMusicToggle: (Boolean) -> Unit){
+    Surface(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
+        val buttonSize = Modifier.size(200.dp, 60.dp)
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Settings",
+                color = Color.DarkGray,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Background Music",
+                    color = Color.DarkGray,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(end = 16.dp)
+                )
+                androidx.compose.material3.Switch(
+                    checked = isMusicPlaying,
+                    onCheckedChange = onMusicToggle
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ElevatedButton(modifier = buttonSize.padding(top=6.dp),
+                    onClick = {navController.navigate("Home")}) {
+                    Text(
+                        text = "Back",
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+                }
+            }
+        }
+    }
 }
-
-
 
 @Composable
 fun GameOptionsPage(navController: NavController, modifier: Modifier=Modifier){
@@ -372,6 +449,7 @@ fun checkWinner(board: List<List<String>>, winLength : Int): String? {
 
 @Composable
 fun HomePage(navController: NavController,modifier:Modifier=Modifier,
+             onExitApp: () -> Unit
              ){
     val buttonSize = Modifier.size(200.dp, 60.dp)
     Column(modifier = modifier.fillMaxSize()
@@ -388,7 +466,7 @@ fun HomePage(navController: NavController,modifier:Modifier=Modifier,
             )
         }
         ElevatedButton(modifier = buttonSize.padding(top=6.dp),
-            onClick = {}) {
+            onClick = {navController.navigate("settings")}) {
             Text(
                 text = "Setting",
                 fontWeight = FontWeight.ExtraBold,
@@ -396,7 +474,7 @@ fun HomePage(navController: NavController,modifier:Modifier=Modifier,
             )
         }
         ElevatedButton(modifier = buttonSize.padding(top=6.dp),
-            onClick = {}) {
+            onClick = { onExitApp()}) {
             Text(
                 text = "Exit",
                 fontWeight = FontWeight.ExtraBold,
